@@ -16,8 +16,8 @@ class postgres {
   include postgres::common
 
   # Handle version specified in site.pp (or default to postgresql) 
-  $postgres_client = "postgresql${postgres_version}"
-  $postgres_server = "postgresql${postgres_version}-server"
+  $postgres_client = "postgresql${postgres::postgres_password}"
+  $postgres_server = "postgresql${postgres::postgres_password}-server"
 
   package { [$postgres_client, $postgres_server]: 
     ensure => installed,
@@ -43,18 +43,18 @@ class postgres {
 
 # Initialize the database with the postgres_password password.
 define postgres::initdb() {
-  if $postgres_password == "" {
+  if $postgres::postgres_password == "" {
     exec {
         "InitDB":
           command => "/bin/chown postgres.postgres /var/lib/pgsql && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data -E UTF8\"",
-          require =>  [User['postgres'],Package["postgresql${postgres_version}-server"]],
+          require =>  [User['postgres'],Package["postgresql${postgres::postgres_password}-server"]],
           unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION",
     }
   } else {
     exec {
         "InitDB":
           command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres_password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
-          require =>  [User['postgres'],Package["postgresql${postgres_version}-server"]],
+          require =>  [User['postgres'],Package["postgresql${postgres::postgres_password}-server"]],
           unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION ",
     }
   }
