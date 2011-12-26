@@ -3,6 +3,10 @@
 # This module manages postgres
 #
 # Parameters:
+#   $version:
+#     Version of postgres to install
+#   $password:
+#     Password to use for created user. Use "" for no password
 #
 # Actions:
 #
@@ -11,13 +15,13 @@
 # Sample Usage: see postgres/README.markdown
 #
 # [Remember: No empty lines between comments and class definition]
-class postgres {
-  # Common stuff, like ensuring postgres_password defined in site.pp
+class postgres ($version = $postgres_version, $password = $postgres_password) {
+  # Common stuff
   include postgres::common
 
   # Handle version specified in site.pp (or default to postgresql) 
-  $postgres_client = "postgresql${postgres::postgres_version}"
-  $postgres_server = "postgresql${postgres::postgres_version}-server"
+  $postgres_client = "postgresql${postgres::version}"
+  $postgres_server = "postgresql${postgres::version}-server"
 
   package { [$postgres_client, $postgres_server]: 
     ensure => installed,
@@ -43,18 +47,18 @@ class postgres {
 
 # Initialize the database with the postgres_password password.
 define postgres::initdb() {
-  if $postgres::postgres_password == "" {
+  if $postgres::password == "" {
     exec {
         "InitDB":
           command => "/bin/chown postgres.postgres /var/lib/pgsql && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data -E UTF8\"",
-          require =>  [User['postgres'],Package["postgresql${postgres::postgres_version}-server"]],
+          require =>  [User['postgres'],Package["postgresql${postgres::version}-server"]],
           unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION",
     }
   } else {
     exec {
         "InitDB":
-          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres::postgres_password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
-          require =>  [User['postgres'],Package["postgresql${postgres::postgres_version}-server"]],
+          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres::password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
+          require =>  [User['postgres'],Package["postgresql${postgres::version}-server"]],
           unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION ",
     }
   }
@@ -71,7 +75,7 @@ define postgres::enable {
 }
 
 
-# Postgres host based authentication 
+# Postgres host based authentication
 define postgres::hba ($allowedrules){
   file { "/var/lib/pgsql/data/pg_hba.conf":
     content => template("postgres/pg_hba.conf.erb"),	
@@ -95,7 +99,7 @@ define postgres::config ($listen="localhost")  {
 }
 
 # Base SQL exec
-define sqlexec($username, $password, $database, $sql, $sqlcheck) {
+define sqlexec($username, $password="", $database, $sql, $sqlcheck) {
   file{ "/tmp/puppetsql-$name":
     owner => $username,
     group => $username,
@@ -125,7 +129,7 @@ define sqlexec($username, $password, $database, $sql, $sqlcheck) {
 define postgres::createuser($passwd) {
   # if user doesn't exist, create it
   sqlexec{ "createuser-${name}":
-    password => $postgres::postgres_password,
+    password => $postgres::password,
     username => "postgres",
     database => "postgres",
     sql      => "CREATE ROLE ${name} WITH LOGIN PASSWORD '${passwd}';",
@@ -150,7 +154,7 @@ define postgres::user($passwd) {
 # Create a Postgres db
 define postgres::createdb($owner) {
   sqlexec{ $name:
-    password => $postgres::postgres_password,
+    password => $postgres::password,
     username => "postgres",
     database => "postgres",
     sql => "CREATE DATABASE $name WITH OWNER = $owner ENCODING = 'UTF8';",
