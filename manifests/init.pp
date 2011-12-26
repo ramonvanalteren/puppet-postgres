@@ -53,7 +53,7 @@ define postgres::initdb() {
   } else {
     exec {
         "InitDB":
-          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres_password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
+          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres::postgres_password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
           require =>  [User['postgres'],Package["postgresql${postgres::postgres_version}-server"]],
           unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION ",
     }
@@ -72,7 +72,7 @@ define postgres::enable {
 
 
 # Postgres host based authentication 
-define postgres::hba ($postgres_password="",$allowedrules){
+define postgres::hba ($allowedrules){
   file { "/var/lib/pgsql/data/pg_hba.conf":
     content => template("postgres/pg_hba.conf.erb"),	
     owner  => "root",
@@ -103,7 +103,7 @@ define sqlexec($username, $password, $database, $sql, $sqlcheck) {
     mode => 0600,
     ensure => present,
   }  
-  if $postgres_password == "" {
+  if $password == "" {
     exec{ "psql -h localhost --username=${username} $database -f /tmp/puppetsql-$name  >> /tmp/puppetsql-$name.sql.log 2>&1 && /bin/sleep 5":
       path        => $path,
       timeout     => 600,
@@ -112,7 +112,7 @@ define sqlexec($username, $password, $database, $sql, $sqlcheck) {
     }
   } else {
     exec{ "psql -h localhost --username=${username} $database -f /tmp/puppetsql-$name  >> /tmp/puppetsql-$name.sql.log 2>&1 && /bin/sleep 5":
-      environment => "PGPASSWORD=${postgres_password}",
+      environment => "PGPASSWORD=${password}",
       path        => $path,
       timeout     => 600,
       unless      => "psql -U $username $database -c $sqlcheck",
@@ -124,7 +124,7 @@ define sqlexec($username, $password, $database, $sql, $sqlcheck) {
 # Create a Postgres user
 define postgres::createuser($passwd) {
   sqlexec{ createuser:
-    password => $postgres_password, 
+    password => $postgres::postgres_password,
     username => "postgres",
     database => "postgres",
     sql      => "CREATE ROLE ${name} WITH LOGIN PASSWORD '${passwd}';",
@@ -136,7 +136,7 @@ define postgres::createuser($passwd) {
 # Create a Postgres db
 define postgres::createdb($owner) {
   sqlexec{ $name:
-    password => $postgres_password, 
+    password => $postgres::postgres_password,
     username => "postgres",
     database => "postgres",
     sql => "CREATE DATABASE $name WITH OWNER = $owner ENCODING = 'UTF8';",
