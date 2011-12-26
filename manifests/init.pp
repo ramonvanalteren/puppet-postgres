@@ -138,7 +138,8 @@ define postgres::createuser($passwd) {
   }
 }
 
-# Define a Postgres user
+# Define a Postgres user.
+# Not optimal as password will be changed all the time, no way to check if password is already set to a specific value
 define postgres::user($passwd) {
   postgres::createuser{ $name: passwd => $passwd } ->
   # if user exists, ensure password is correctly set (useful for updates)
