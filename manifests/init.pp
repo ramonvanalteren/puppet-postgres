@@ -123,6 +123,7 @@ define sqlexec($username, $password, $database, $sql, $sqlcheck) {
 
 # Create a Postgres user
 define postgres::createuser($passwd) {
+  # if user doesn't exist, create it
   sqlexec{ createuser:
     password => $postgres::postgres_password,
     username => "postgres",
@@ -130,6 +131,19 @@ define postgres::createuser($passwd) {
     sql      => "CREATE ROLE ${name} WITH LOGIN PASSWORD '${passwd}';",
     sqlcheck => "\"SELECT usename FROM pg_user WHERE usename = '${name}'\" | grep ${name}",
     require  =>  Service[postgresql],
+  }
+}
+
+# Define a Postgres user
+define postgres::user($passwd) {
+  postgres::createuser{ $name: passwd => $passwd } ->
+  # if user exists, ensure password is correctly set (useful for updates)
+  sqlexec{ updateuser:
+    password => $postgres::postgres_password,
+    username => "postgres",
+    database => "postgres",
+    sql      => "ALTER ROLE ${name} WITH PASSWORD '${passwd}';",
+    sqlcheck => "fail", # trigger the SQL anyway
   }
 }
 
