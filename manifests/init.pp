@@ -124,7 +124,7 @@ define sqlexec($username, $password, $database, $sql, $sqlcheck) {
 # Create a Postgres user
 define postgres::createuser($passwd) {
   # if user doesn't exist, create it
-  sqlexec{ createuser:
+  sqlexec{ "createuser-${name}":
     password => $postgres::postgres_password,
     username => "postgres",
     database => "postgres",
@@ -138,7 +138,7 @@ define postgres::createuser($passwd) {
 define postgres::user($passwd) {
   postgres::createuser{ $name: passwd => $passwd } ->
   # if user exists, ensure password is correctly set (useful for updates)
-  sqlexec{ updateuser:
+  sqlexec{ "updateuser-${name}":
     password => $postgres::postgres_password,
     username => "postgres",
     database => "postgres",
