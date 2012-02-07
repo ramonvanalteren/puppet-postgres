@@ -15,7 +15,8 @@
 # Sample Usage: see postgres/README.markdown
 #
 # [Remember: No empty lines between comments and class definition]
-class postgres ($version = $postgres_version, $password = $postgres_password) {
+class postgres ($version = $postgres_version, $password = $postgres_password,
+                $vardir="/var/lib/pgsql") {
   # Common stuff
   include postgres::common
 
@@ -33,7 +34,7 @@ class postgres ($version = $postgres_version, $password = $postgres_password) {
     comment => 'PostgreSQL Server',
     uid => '26',
     gid => '26',
-    home => '/var/lib/pgsql',
+    home => $vardir,
     managehome => true,
     password => '!!',
   }
@@ -50,16 +51,16 @@ define postgres::initdb() {
   if $postgres::password == "" {
     exec {
         "InitDB":
-          command => "/bin/chown postgres.postgres /var/lib/pgsql && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data -E UTF8\"",
+          command => "/bin/chown postgres.postgres $vardir && /bin/su  postgres -c \"/usr/bin/initdb $vardir/data -E UTF8\"",
           require =>  [User['postgres'],Package["postgresql${postgres::version}-server"]],
-          unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION",
+          unless => "/usr/bin/test -e $vardir/data/PG_VERSION",
     }
   } else {
     exec {
         "InitDB":
-          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres::password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb /var/lib/pgsql/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
+          command => "/bin/chown postgres.postgres $vardir && echo \"${postgres::password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb $vardir/data --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
           require =>  [User['postgres'],Package["postgresql${postgres::version}-server"]],
-          unless => "/usr/bin/test -e /var/lib/pgsql/data/PG_VERSION ",
+          unless => "/usr/bin/test -e $vardir/data/PG_VERSION ",
     }
   }
 }
@@ -77,23 +78,23 @@ define postgres::enable {
 
 # Postgres host based authentication
 define postgres::hba ($allowedrules){
-  file { "/var/lib/pgsql/data/pg_hba.conf":
+  file { "$vardir/data/pg_hba.conf":
     content => template("postgres/pg_hba.conf.erb"),	
     owner  => "root",
     group  => "root",
     notify => Service["postgresql"],
- #   require => File["/var/lib/pgsql/.order"],
+ #   require => File["$vardir/.order"],
     require => Exec["InitDB"],
   }
 }
 
 define postgres::config ($listen="localhost")  {
-  file {"/var/lib/pgsql/data/postgresql.conf":
+  file {"$vardir/data/postgresql.conf":
     content => template("postgres/postgresql.conf.erb"),
     owner => postgres,
     group => postgres,
     notify => Service["postgresql"],
-  #  require => File["/var/lib/pgsql/.order"],
+  #  require => File["$vardir/.order"],
     require => Exec["InitDB"],
   }
 }
