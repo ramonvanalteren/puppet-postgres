@@ -51,16 +51,16 @@ define postgres::initdb() {
   if $postgres::password == "" {
     exec {
         "InitDB":
-          command => "/bin/chown postgres.postgres /var/lib/pgsql && /bin/su  postgres -c \"/usr/bin/initdb $datadir -E UTF8\"",
+          command => "/bin/chown postgres.postgres /var/lib/pgsql && /bin/su postgres -c \"/usr/bin/initdb $postgres::datadir -E UTF8\"",
           require =>  [User['postgres'],Package["postgresql${postgres::version}-server"]],
-          unless => "/usr/bin/test -e $datadir/PG_VERSION",
+          unless => "/usr/bin/test -e $postgres::datadir/PG_VERSION",
     }
   } else {
     exec {
         "InitDB":
-          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres::password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb $datadir --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
+          command => "/bin/chown postgres.postgres /var/lib/pgsql && echo \"${postgres::password}\" > /tmp/ps && /bin/su  postgres -c \"/usr/bin/initdb $postgres::datadir --auth='password' --pwfile=/tmp/ps -E UTF8 \" && rm -rf /tmp/ps",
           require =>  [User['postgres'],Package["postgresql${postgres::version}-server"]],
-          unless => "/usr/bin/test -e $datadir/PG_VERSION ",
+          unless => "/usr/bin/test -e $postgres::datadir/PG_VERSION ",
     }
   }
 }
@@ -78,7 +78,7 @@ define postgres::enable {
 
 # Postgres host based authentication
 define postgres::hba ($allowedrules){
-  file { "$datadir/pg_hba.conf":
+  file { "$postgres::datadir/pg_hba.conf":
     content => template("postgres/pg_hba.conf.erb"),	
     owner  => "root",
     group  => "root",
@@ -89,7 +89,7 @@ define postgres::hba ($allowedrules){
 }
 
 define postgres::config ($listen="localhost")  {
-  file {"$datadir/postgresql.conf":
+  file {"$postgres::datadir/postgresql.conf":
     content => template("postgres/postgresql.conf.erb"),
     owner => postgres,
     group => postgres,
