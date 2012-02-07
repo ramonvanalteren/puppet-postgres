@@ -67,7 +67,12 @@ define postgres::initdb() {
 
 # Start the service if not running
 define postgres::enable {
-  service { postgresql:
+  if ( $postgres::version != "" and $postgres::version >= "90" ) {
+    $service = "postgresql-9.0"
+  } else {
+    $service = "postgresql"
+  }
+  service { $service:
     ensure => running,
     enable => true,
     hasstatus => true,
