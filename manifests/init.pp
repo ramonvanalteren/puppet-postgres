@@ -72,7 +72,8 @@ define postgres::enable {
   } else {
     $service = "postgresql"
   }
-  service { $service:
+  service { postgresql:
+    name => $service,
     ensure => running,
     enable => true,
     hasstatus => true,
